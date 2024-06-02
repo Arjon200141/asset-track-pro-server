@@ -29,21 +29,25 @@ async function run() {
         // Connect the client to the server	(optional starting in v4.7)
         await client.connect();
 
-        const hruserCollection = client.db('assettrackproDB').collection('hr_user');
-        const employeeuserCollection = client.db('assettrackproDB').collection('employee_user');
+        const userCollection = client.db('assettrackproDB').collection('users');
 
-
-        app.post('/hruser', async (req, res) => {
-            const hruser = req.body;
-            const result = await hruserCollection.insertOne(hruser);
+        app.post('/users', async (req, res) => {
+            const user = req.body;
+            const query = { userId: user.uid }
+            const existingUser = await userCollection.findOne(query);
+            if (existingUser) {
+                return res.send({ message: 'User Already Exists', insertId: null })
+            }
+            const result = await userCollection.insertOne(user);
             res.send(result);
         })
 
-        app.post('/employeeuser', async (req, res) => {
-            const employeeuser = req.body;
-            const result = await employeeuserCollection.insertOne(employeeuser);
+        app.get('/users', async (req, res) => {
+            const cursor = userCollection.find();
+            const result = await cursor.toArray();
             res.send(result);
         })
+
 
         // Send a ping to confirm a successful connection
         await client.db("admin").command({ ping: 1 });
