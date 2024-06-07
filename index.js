@@ -31,6 +31,7 @@ async function run() {
 
         const userCollection = client.db('assettrackproDB').collection('users');
         const assetCollection = client.db('assettrackproDB').collection('assets');
+        const requestCollection = client.db('assettrackproDB').collection('requests');
 
         app.post('/users', async (req, res) => {
             const user = req.body;
@@ -40,6 +41,18 @@ async function run() {
                 return res.send({ message: 'User Already Exists', insertId: null })
             }
             const result = await userCollection.insertOne(user);
+            res.send(result);
+        })
+
+        app.post('/assets', async (req, res) => {
+            const asset = req.body;
+            const result = await assetCollection.insertOne(asset);
+            res.send(result);
+        })
+
+        app.post('/requests', async (req, res) => {
+            const requests = req.body;
+            const result = await requestCollection.insertOne(requests);
             res.send(result);
         })
 
@@ -54,12 +67,15 @@ async function run() {
             const result = await cursor.toArray();
             res.send(result);
         })
-
-        app.post('/assets' , async(req,res) => {
-            const asset = req.body;
-            const result = await assetCollection.insertOne(asset);
+        app.get('/requests', async (req, res) => {
+            const cursor = requestCollection.find();
+            const result = await cursor.toArray();
             res.send(result);
         })
+
+
+
+
 
 
         // Send a ping to confirm a successful connection
