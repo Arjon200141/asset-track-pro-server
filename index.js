@@ -30,6 +30,7 @@ async function run() {
         await client.connect();
 
         const userCollection = client.db('assettrackproDB').collection('users');
+        const assetCollection = client.db('assettrackproDB').collection('assets');
 
         app.post('/users', async (req, res) => {
             const user = req.body;
@@ -45,6 +46,18 @@ async function run() {
         app.get('/users', async (req, res) => {
             const cursor = userCollection.find();
             const result = await cursor.toArray();
+            res.send(result);
+        })
+
+        app.get('/assets', async (req, res) => {
+            const cursor = assetCollection.find();
+            const result = await cursor.toArray();
+            res.send(result);
+        })
+
+        app.post('/assets' , async(req,res) => {
+            const asset = req.body;
+            const result = await assetCollection.insertOne(asset);
             res.send(result);
         })
 
