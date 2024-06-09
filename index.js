@@ -74,6 +74,25 @@ async function run() {
             res.send(result);
         });
 
+        app.get("/usersemp", async (req, res) => {
+            const { role } = req.query;
+            const query = { role: role || 'employee' };
+            try {
+                const result = await userCollection.find(query).toArray();
+                res.send(result);
+            } catch (error) {
+                console.error('Error fetching users', error);
+                res.status(500).send({ error: 'Failed to fetch users' });
+            }
+        });
+
+
+        // app.get('/allrequests' , async(req,res)=>{
+        //     const cursor = requestCollection.find();
+        //     const result= await cursor.toArray();
+        //     res.send(result);
+        // })
+
 
         app.get('/users', async (req, res) => {
             const cursor = userCollection.find();
@@ -86,7 +105,7 @@ async function run() {
             const result = await cursor.toArray();
             res.send(result);
         })
-        
+
 
 
 
