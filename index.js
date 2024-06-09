@@ -2,7 +2,7 @@ const express = require('express');
 const app = express();
 require('dotenv').config();
 const cors = require('cors');
-const port = process.env.PORT || 5000;
+const port = process.env.PORT || 4000;
 
 app.use(cors());
 app.use(express.json());
@@ -56,6 +56,25 @@ async function run() {
             res.send(result);
         })
 
+        app.get("/requests", async (req, res) => {
+            const { email, searchTerm, stockFilter, assetTypeFilter } = req.query;
+            const query = { UserEmail: email };
+
+            if (searchTerm) {
+                query.ProductName = { $regex: searchTerm, $options: 'i' };
+            }
+            if (stockFilter) {
+                query.stockStatus = stockFilter;
+            }
+            if (assetTypeFilter) {
+                query.ProductType = assetTypeFilter;
+            }
+
+            const result = await requestCollection.find(query).toArray();
+            res.send(result);
+        });
+
+
         app.get('/users', async (req, res) => {
             const cursor = userCollection.find();
             const result = await cursor.toArray();
@@ -67,11 +86,7 @@ async function run() {
             const result = await cursor.toArray();
             res.send(result);
         })
-        app.get('/requests', async (req, res) => {
-            const cursor = requestCollection.find();
-            const result = await cursor.toArray();
-            res.send(result);
-        })
+        
 
 
 
