@@ -35,14 +35,22 @@ async function run() {
 
         app.post('/users', async (req, res) => {
             const user = req.body;
-            const query = { userId: user.uid }
+            const query = { userId: user.userId };
             const existingUser = await userCollection.findOne(query);
+        
             if (existingUser) {
-                return res.send({ message: 'User Already Exists', insertId: null })
+                if (existingUser.role !== user.role) {
+                    return res.status(403).send({ message: 'User cannot switch roles', insertedId: null });
+                } else {
+                    return res.send({ message: 'User Already Exists', insertedId: null });
+                }
             }
+        
             const result = await userCollection.insertOne(user);
             res.send(result);
-        })
+        });
+        
+        
 
         app.post('/assets', async (req, res) => {
             const asset = req.body;
