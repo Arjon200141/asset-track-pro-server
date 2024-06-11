@@ -43,6 +43,20 @@ async function run() {
             res.send(result);
         });
 
+        app.put('/users/:id', async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: new ObjectId(id) }
+            const options = { upsert: true }
+            const updateUser = req.body;
+            const newUser = {
+                $set: {
+                    name: updateUser.name
+                }
+            }
+            const result = await userCollection.updateOne(filter, newUser, options);
+            res.send(result);
+        })
+
         app.post('/assets', async (req, res) => {
             const asset = req.body;
             const result = await assetCollection.insertOne(asset);
@@ -55,10 +69,17 @@ async function run() {
             res.send(result);
         });
 
-        app.delete('/assets/:id' , async(req,res)=>{
+        app.delete('/assets/:id', async (req, res) => {
             const id = req.params.id;
-            const query = {_id : new ObjectId(id)};
+            const query = { _id: new ObjectId(id) };
             const result = await assetCollection.deleteOne(query);
+            res.send(result);
+        })
+
+        app.delete('/users/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            const result = await userCollection.deleteOne(query);
             res.send(result);
         })
 
