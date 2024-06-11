@@ -101,6 +101,29 @@ async function run() {
             res.send(result);
         });
 
+        app.put('/assets/:id', async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: new ObjectId(id) }
+            const options = { upsert: true }
+            const updateasset = req.body;
+            const asset = {
+              $set: {
+                type: updateasset.type,
+                quantity: updateasset.quantity,
+                status: updateasset.status,
+              }
+            }
+            const result = await assetCollection.updateOne(filter, asset, options);
+            res.send(result);
+          })
+
+        app.get('/updateasset/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            const result = await assetCollection.findOne(query);
+            res.send(result);
+          })
+
         app.get('/usersemp', async (req, res) => {
             const { role } = req.query;
             const query = { role: role || 'employee' };
