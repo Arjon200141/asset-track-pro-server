@@ -28,6 +28,7 @@ async function run() {
         const requestCollection = client.db('assettrackproDB').collection('requests');
         const teamMemberCollection = client.db('assettrackproDB').collection('teamMembers');
         const packageCollection = client.db('assettrackproDB').collection('packages');
+        const paymentCollection = client.db("bistroDb").collection("payments");
 
         app.post('/users', async (req, res) => {
             const user = req.body;
