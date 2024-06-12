@@ -4,7 +4,7 @@ require('dotenv').config();
 const cors = require('cors');
 const { MongoClient, ObjectId, ServerApiVersion } = require('mongodb');
 const port = process.env.PORT || 4000;
-const stripe = require('stripe')(process.env.SECRET_KEY)
+const stripe = require('stripe')(process.env.SECRET_KEY);
 
 app.use(cors());
 app.use(express.json());
@@ -49,17 +49,11 @@ async function run() {
         app.post('/create-payment-intent', async (req, res) => {
             try {
                 const { price } = req.body;
-
-                if (isNaN(price) || price <= 0) {
-                    return res.status(400).send({ error: 'Invalid price' });
-                }
-
-                const amount = Math.round(price * 100);
-                console.log(amount, 'Amount Inside');
+                const amount = parseInt(price * 100);
 
                 const paymentIntent = await stripe.paymentIntents.create({
                     amount: amount,
-                    currency: "usd",
+                    currency: 'usd',
                     payment_method_types: ['card']
                 });
 
@@ -67,8 +61,8 @@ async function run() {
                     clientSecret: paymentIntent.client_secret
                 });
             } catch (error) {
-                console.error('Error creating payment intent:', error);
-                res.status(500).send({ error: 'Internal Server Error' });
+                console.error(error);
+                res.status(500).send({ error: 'Failed to create payment intent' });
             }
         });
 
@@ -110,6 +104,13 @@ async function run() {
             const query = { _id: new ObjectId(id) };
             const result = await userCollection.deleteOne(query);
             res.send(result);
+        });
+
+        app.get('/package-info/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            const package = await packageCollection.findOne(query);
+            res.send(package);
         });
 
         app.get('/requests', async (req, res) => {
