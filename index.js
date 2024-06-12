@@ -4,6 +4,7 @@ require('dotenv').config();
 const cors = require('cors');
 const { MongoClient, ObjectId, ServerApiVersion } = require('mongodb');
 const port = process.env.PORT || 4000;
+const stripe = require('stripe')(process.env.SECRET_KEY)
 
 app.use(cors());
 app.use(express.json());
@@ -25,6 +26,8 @@ async function run() {
         const userCollection = client.db('assettrackproDB').collection('users');
         const assetCollection = client.db('assettrackproDB').collection('assets');
         const requestCollection = client.db('assettrackproDB').collection('requests');
+        const teamMemberCollection = client.db('assettrackproDB').collection('teamMembers');
+        const packageCollection = client.db('assettrackproDB').collection('packages');
 
         app.post('/users', async (req, res) => {
             const user = req.body;
@@ -43,19 +46,45 @@ async function run() {
             res.send(result);
         });
 
+        app.post('/create-payment-intent', async (req, res) => {
+            try {
+                const { price } = req.body;
+
+                if (isNaN(price) || price <= 0) {
+                    return res.status(400).send({ error: 'Invalid price' });
+                }
+
+                const amount = Math.round(price * 100);
+                console.log(amount, 'Amount Inside');
+
+                const paymentIntent = await stripe.paymentIntents.create({
+                    amount: amount,
+                    currency: "usd",
+                    payment_method_types: ['card']
+                });
+
+                res.send({
+                    clientSecret: paymentIntent.client_secret
+                });
+            } catch (error) {
+                console.error('Error creating payment intent:', error);
+                res.status(500).send({ error: 'Internal Server Error' });
+            }
+        });
+
         app.put('/users/:id', async (req, res) => {
             const id = req.params.id;
-            const filter = { _id: new ObjectId(id) }
-            const options = { upsert: true }
+            const filter = { _id: new ObjectId(id) };
+            const options = { upsert: true };
             const updateUser = req.body;
             const newUser = {
                 $set: {
                     name: updateUser.name
                 }
-            }
+            };
             const result = await userCollection.updateOne(filter, newUser, options);
             res.send(result);
-        })
+        });
 
         app.post('/assets', async (req, res) => {
             const asset = req.body;
@@ -74,19 +103,18 @@ async function run() {
             const query = { _id: new ObjectId(id) };
             const result = await assetCollection.deleteOne(query);
             res.send(result);
-        })
+        });
 
         app.delete('/users/:id', async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) };
             const result = await userCollection.deleteOne(query);
             res.send(result);
-        })
+        });
 
         app.get('/requests', async (req, res) => {
             const { email, searchTerm, stockFilter, assetTypeFilter } = req.query;
             const query = { UserEmail: email };
-
             if (searchTerm) {
                 query.ProductName = { $regex: searchTerm, $options: 'i' };
             }
@@ -96,37 +124,108 @@ async function run() {
             if (assetTypeFilter) {
                 query.ProductType = assetTypeFilter;
             }
-
             const result = await requestCollection.find(query).toArray();
             res.send(result);
         });
 
+        app.get('/package-info', async (req, res) => {
+            try {
+                const packages = await packageCollection.find().toArray();
+                res.send(packages);
+            } catch (error) {
+                console.error("Error fetching package info", error);
+                res.status(500).send({ error: 'Internal Server Error' });
+            }
+        });
+
+        app.get('/unaffiliated-members', async (req, res) => {
+            try {
+                const unaffiliatedMembers = await userCollection.find({ team: null }).toArray();
+                res.send(unaffiliatedMembers);
+            } catch (error) {
+                console.error("Error fetching unaffiliated members", error);
+                res.status(500).send({ error: 'Internal Server Error' });
+            }
+        });
+
+        app.get('/team-members', async (req, res) => {
+            try {
+                const teamMembers = await teamMemberCollection.find().toArray();
+                res.send(teamMembers);
+            } catch (error) {
+                console.error("Error fetching team members", error);
+                res.status(500).send({ error: 'Internal Server Error' });
+            }
+        });
+
+        app.post('/add-to-team', async (req, res) => {
+            try {
+                const { memberId } = req.body;
+                const result = await teamMemberCollection.insertOne({ memberId });
+                res.send({ success: true, message: 'Member added to the team', result });
+            } catch (error) {
+                console.error("Error adding member to team", error);
+                res.status(500).send({ error: 'Internal Server Error' });
+            }
+        });
+
+        app.post('/add-selected-members-to-team', async (req, res) => {
+            try {
+                const { memberIds } = req.body;
+
+                if (!memberIds || memberIds.length === 0) {
+                    return res.status(400).json({ error: 'No member IDs provided' });
+                }
+
+                const documents = memberIds.map(memberId => ({ memberId }));
+
+                const result = await teamMemberCollection.insertMany(documents);
+                res.status(201).json({ success: true, message: 'Selected members added to the team', result });
+            } catch (error) {
+                console.error("Error adding selected members to team", error);
+                res.status(500).json({ error: 'Internal Server Error' });
+            }
+        });
+
+
+        app.post('/remove-from-team', async (req, res) => {
+            try {
+                const { memberId } = req.body;
+                const result = await teamMemberCollection.deleteOne({ memberId });
+                res.send({ success: true, message: 'Member removed from the team', result });
+            } catch (error) {
+                console.error("Error removing member from team", error);
+                res.status(500).send({ error: 'Internal Server Error' });
+            }
+        });
+
         app.put('/assets/:id', async (req, res) => {
             const id = req.params.id;
-            const filter = { _id: new ObjectId(id) }
-            const options = { upsert: true }
+            const filter = { _id: new ObjectId(id) };
+            const options = { upsert: true };
             const updateasset = req.body;
             const asset = {
-              $set: {
-                type: updateasset.type,
-                quantity: updateasset.quantity,
-                status: updateasset.status,
-              }
-            }
+                $set: {
+                    type: updateasset.type,
+                    quantity: updateasset.quantity,
+                    status: updateasset.status,
+                }
+            };
             const result = await assetCollection.updateOne(filter, asset, options);
             res.send(result);
-          })
+        });
 
         app.get('/updateasset/:id', async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) };
             const result = await assetCollection.findOne(query);
             res.send(result);
-          })
+        });
 
         app.get('/usersemp', async (req, res) => {
             const { role } = req.query;
             const query = { role: role || 'employee' };
+
             try {
                 const result = await userCollection.find(query).toArray();
                 res.send(result);
@@ -238,12 +337,15 @@ async function run() {
         });
 
         app.listen(port, () => {
-            console.log(`Asset Track Pro is Running at ${port}`);
+            console.log(`Asset Track Pro is running at ${port}`);
+        });
+        app.listen(() => {
+            console.log('Successffully Connected to MongoDB');
         });
 
-        console.log("Connected to MongoDB successfully!");
     } catch (err) {
         console.error('Failed to connect to MongoDB', err);
     }
 }
+
 run().catch(console.dir);
